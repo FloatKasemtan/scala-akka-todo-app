@@ -27,22 +27,38 @@ object UserRegistry {
 //  final case class ActionPerformed(description: String)
 
 
-  def apply(): Behavior[Command] = registry(Set.empty)
+  def apply(): Behavior[Command] = {
+    println("UserRegistry apply")
+    registry(Array.empty)
+  }
 
-  private def registry(users: Set[User]): Behavior[Command] =
+  private def registry(users: Array[User]): Behavior[Command] =
     Behaviors.receiveMessage {
       case GetUsers(replyTo) =>
         replyTo ! Users(users.toSeq)
         Behaviors.same
       case CreateUser(user, replyTo) =>
-        replyTo ! ActionPerformed(s"User ${user.name} created.")
-        registry(users + user)
+        if (users.exists(_.name == user.name)) {
+          replyTo ! ActionPerformed(s"User ${user.name} already exists.", success = false)
+          Behaviors.same
+        }
+        else {
+          replyTo ! ActionPerformed(s"User ${user.name} created.")
+          registry(users :+ user)
+        }
+
       case GetUser(name, replyTo) =>
         replyTo ! GetUserResponse(users.find(_.name == name))
         Behaviors.same
       case DeleteUser(name, replyTo) =>
-        replyTo ! ActionPerformed(s"User $name deleted.")
-        registry(users.filterNot(_.name == name))
+        if (!users.exists(_.name == name)) {
+          replyTo ! ActionPerformed(s"User $name does not exist.", success = false)
+          Behaviors.same
+        }
+        else {
+          replyTo ! ActionPerformed(s"User $name deleted.")
+          registry(users.filterNot(_.name == name))
+        }
     }
 }
 //#user-registry-actor
